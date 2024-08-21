@@ -4,20 +4,27 @@ import com.ll.sapp.domain.surl.entity.Surl;
 import com.ll.sapp.domain.surl.repository.SurlRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class SurlService {
     private final SurlRepository surlRepository;
 
-    public void add(String url, String title) {
+    @Transactional
+    public Surl add(String url, String title) {
         Surl surl = new Surl(url, title);
-        surlRepository.save(surl);
+        return surlRepository.save(surl);
     }
 
     public List<Surl> findAll() {
         return surlRepository.findAll();
+    }
+
+    public long count() {
+        return surlRepository.count();
     }
 }

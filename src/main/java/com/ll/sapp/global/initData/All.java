@@ -14,6 +14,8 @@ public class All {
     @Bean
     public ApplicationRunner initDataAll() {
         return args -> {
+            if ( surlService.count() > 0 ) return;
+
             surlService.add("https://www.google.com", "구글");
             surlService.add("https://www.naver.com", "네이버");
             surlService.add("https://www.daum.net", "다음");
