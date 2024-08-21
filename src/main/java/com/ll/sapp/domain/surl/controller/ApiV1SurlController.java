@@ -1,12 +1,13 @@
 package com.ll.sapp.domain.surl.controller;
 
 import com.ll.sapp.domain.surl.dto.SurlDto;
+import com.ll.sapp.domain.surl.entity.Surl;
 import com.ll.sapp.domain.surl.service.SurlService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -24,5 +25,22 @@ public class ApiV1SurlController {
                 .stream()
                 .map(SurlDto::new)
                 .toList();
+    }
+
+
+    public record SurlAddReqBody(
+            @NotBlank String url,
+            @NotBlank String subject
+    ) {
+    }
+
+    @PostMapping("")
+    @Transactional
+    public String add(
+            @Valid @RequestBody SurlAddReqBody reqBody
+    ) {
+        Surl surl = surlService.add(reqBody.url(), reqBody.subject());
+        String msg = surl.getId() + "번 단축URL이 생성되었습니다.";
+        return "200-1/" + msg;
     }
 }
