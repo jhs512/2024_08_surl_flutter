@@ -1,6 +1,6 @@
 package com.ll.sapp.domain.surl.controller;
 
-import com.ll.sapp.domain.surl.entity.Surl;
+import com.ll.sapp.domain.surl.dto.SurlDto;
 import com.ll.sapp.domain.surl.service.SurlService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,7 +18,11 @@ public class ApiV1SurlController {
     private final SurlService surlService;
 
     @GetMapping("")
-    public List<Surl> getSurls() {
-        return surlService.findAll();
+    public List<SurlDto> getSurls() {
+        return surlService
+                .findAll()
+                .stream()
+                .map(SurlDto::new)
+                .toList();
     }
 }
