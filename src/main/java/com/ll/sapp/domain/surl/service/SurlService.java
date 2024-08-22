@@ -32,4 +32,10 @@ public class SurlService {
     public Optional<Surl> findById(long id) {
         return surlRepository.findById(id);
     }
+
+    @Transactional
+    public void modify(Surl surl, String url, String subject) {
+        surl.setUrl(url);
+        surl.setTitle(subject);
+    }
 }

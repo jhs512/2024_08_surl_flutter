@@ -47,11 +47,29 @@ public class ApiV1SurlController {
 
     @PostMapping("")
     @Transactional
-    public String add(
+    public SurlDto add(
             @Valid @RequestBody SurlAddReqBody reqBody
     ) {
         Surl surl = surlService.add(reqBody.url(), reqBody.subject());
-        String msg = surl.getId() + "번 단축URL이 생성되었습니다.";
-        return "200-1/" + msg;
+        return new SurlDto(surl);
+    }
+
+
+    public record SurlModifyReqBody(
+            @NotBlank String url,
+            @NotBlank String subject
+    ) {
+    }
+
+    @PutMapping("/{id}")
+    @Transactional
+    public SurlDto modify(
+            @PathVariable long id,
+            @Valid @RequestBody SurlModifyReqBody reqBody
+    ) {
+        Surl surl = surlService.findById(id).get();
+        surlService.modify(surl, reqBody.url(), reqBody.subject());
+
+        return new SurlDto(surl);
     }
 }
