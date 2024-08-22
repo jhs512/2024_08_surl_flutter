@@ -18,6 +18,17 @@ import java.util.List;
 public class ApiV1SurlController {
     private final SurlService surlService;
 
+    @GetMapping("/{id}")
+    public SurlDto getSurl(
+            @PathVariable long id
+    ) {
+        return surlService
+                .findById(id)
+                .map(SurlDto::new)
+                .get();
+    }
+
+
     @GetMapping("")
     public List<SurlDto> getSurls() {
         return surlService
