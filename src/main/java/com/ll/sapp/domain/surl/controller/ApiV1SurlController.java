@@ -3,6 +3,8 @@ package com.ll.sapp.domain.surl.controller;
 import com.ll.sapp.domain.surl.dto.SurlDto;
 import com.ll.sapp.domain.surl.entity.Surl;
 import com.ll.sapp.domain.surl.service.SurlService;
+import com.ll.sapp.global.rsData.RsData;
+import com.ll.sapp.standard.dto.Empty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
@@ -47,11 +49,12 @@ public class ApiV1SurlController {
 
     @PostMapping("")
     @Transactional
-    public SurlDto add(
+    public RsData<SurlDto> add(
             @Valid @RequestBody SurlAddReqBody reqBody
     ) {
         Surl surl = surlService.add(reqBody.url(), reqBody.subject());
-        return new SurlDto(surl);
+
+        return new RsData<>("200-1", "%d번 URL이 생성되었습니다.".formatted(surl.getId()), new SurlDto(surl));
     }
 
 
@@ -63,13 +66,25 @@ public class ApiV1SurlController {
 
     @PutMapping("/{id}")
     @Transactional
-    public SurlDto modify(
+    public RsData<SurlDto> modify(
             @PathVariable long id,
             @Valid @RequestBody SurlModifyReqBody reqBody
     ) {
         Surl surl = surlService.findById(id).get();
         surlService.modify(surl, reqBody.url(), reqBody.subject());
 
-        return new SurlDto(surl);
+        return new RsData<>("200-1", "%d번 URL이 수정되었습니다.".formatted(surl.getId()), new SurlDto(surl));
+    }
+
+
+    @DeleteMapping("/{id}")
+    @Transactional
+    public RsData<Empty> delete(
+            @PathVariable long id
+    ) {
+        Surl surl = surlService.findById(id).get();
+        surlService.delete(surl);
+
+        return new RsData<>("200-1", "삭제되었습니다.");
     }
 }

@@ -38,4 +38,9 @@ public class SurlService {
         surl.setUrl(url);
         surl.setTitle(subject);
     }
+
+    @Transactional
+    public void delete(Surl surl) {
+        surlRepository.delete(surl);
+    }
 }
