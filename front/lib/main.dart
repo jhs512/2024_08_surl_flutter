@@ -400,6 +400,51 @@ class SurlEditPage extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final urlController = useTextEditingController();
+    final subjectController = useTextEditingController();
+
+    Future<void> submitForm() async {
+      final url = urlController.text;
+      final subject = subjectController.text;
+
+      if (url.isEmpty || subject.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('모든 필드를 입력하세요.')),
+        );
+        return;
+      }
+
+      final response = await http.put(
+        Uri.parse('http://localhost:8070/api/v1/surls/$id'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'url': url, 'subject': subject}),
+      );
+
+      if (response.statusCode == 200) {
+        final RsData<Surl> rsData = RsData.fromJson(
+          jsonDecode(utf8.decode(response.bodyBytes)),
+          (json) => Surl.fromJson(json),
+        );
+
+        ref.invalidate(fetchGetSurlProvider(id));
+        ref.invalidate(fetchGetSurlsProvider);
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(rsData.msg)),
+          );
+
+          context.go('/surls/detail/${rsData.body.id}');
+        }
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to edit Surl')),
+          );
+        }
+      }
+    }
+
     final surlAsyncValue = ref.watch(fetchGetSurlProvider(id));
 
     return Scaffold(
@@ -410,88 +455,19 @@ class SurlEditPage extends HookConsumerWidget {
         data: (surl) => Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Id: ${surl.id}',
-                  style: Theme.of(context).textTheme.titleLarge),
-              Text('Subject: ${surl.subject}',
-                  style: Theme.of(context).textTheme.bodyMedium),
-              const SizedBox(height: 10),
-              Text('URL: ${surl.url}',
-                  style: Theme.of(context).textTheme.bodyMedium),
-              const SizedBox(height: 10),
-              Text('Created: ${surl.createDate}',
-                  style: Theme.of(context).textTheme.bodyMedium),
-              const SizedBox(height: 10),
-              Text('Modified: ${surl.modifyDate}',
-                  style: Theme.of(context).textTheme.bodyMedium),
-              const SizedBox(height: 10),
-              SelectableText('Short URL: http://localhost:8070/go/${surl.id}',
-                  style: Theme.of(context).textTheme.bodyMedium),
+              TextField(
+                controller: urlController..text = surl.url,
+                decoration: const InputDecoration(labelText: 'URL'),
+              ),
+              TextField(
+                controller: subjectController..text = surl.subject,
+                decoration: const InputDecoration(labelText: 'Subject'),
+              ),
               const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  ElevatedButton(
-                    onPressed: () async {
-                      final url =
-                      Uri.parse('http://localhost:8070/go/${surl.id}');
-                      if (await canLaunchUrl(url)) {
-                        await launchUrl(url);
-                      } else {
-                        throw 'Could not launch $url';
-                      }
-                    },
-                    child: const Text('Go'),
-                  ),
-                  ElevatedButton(
-                    onPressed: () async {
-                      final confirm = await showDialog<bool>(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return AlertDialog(
-                            title: const Text('삭제 확인'),
-                            content: const Text('정말로 이 항목을 삭제하시겠습니까?'),
-                            actions: <Widget>[
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.of(context).pop(false); // 아니오 선택
-                                },
-                                child: const Text('아니오'),
-                              ),
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.of(context).pop(true); // 예 선택
-                                },
-                                child: const Text('예'),
-                              ),
-                            ],
-                          );
-                        },
-                      );
-
-                      if (confirm == true) {
-                        try {
-                          await deleteSurl(surl.id);
-                          ref.invalidate(fetchGetSurlsProvider);
-                          if (context.mounted) {
-                            context.pop(); // 삭제 후 이전 화면으로 돌아감
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Failed to delete: $e')),
-                            );
-                          }
-                        }
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                    ),
-                    child: const Text('Delete'),
-                  ),
-                ],
+              ElevatedButton(
+                onPressed: submitForm,
+                child: const Text('수정'),
               ),
             ],
           ),
