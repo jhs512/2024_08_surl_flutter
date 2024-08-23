@@ -1,125 +1,231 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:go_router/go_router.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart'; // 추가된 패키지
 
 void main() {
-  runApp(const MyApp());
+  WidgetsFlutterBinding.ensureInitialized();
+
+  runApp(const ProviderScope(
+    child: MyApp(),
+  ));
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends HookWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    final router = useMemoized(() => GoRouter(
+          routes: [
+            GoRoute(
+                path: '/',
+                builder: (context, state) => const HomePage(),
+                routes: [
+                  GoRoute(
+                    path: 'surls',
+                    builder: (context, state) => const SurlListPage(),
+                    routes: [
+                      GoRoute(
+                        path: ':id',
+                        builder: (context, state) => SurlDetailPage(
+                          id: int.parse(state.pathParameters['id']!),
+                        ),
+                      ),
+                    ],
+                  )
+                ])
+          ],
+        ));
+
+    return MaterialApp.router(
+      routerConfig: router,
       title: 'Flutter Demo',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
+class HomePage extends HookWidget {
+  const HomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        title: const Text('홈'),
       ),
       body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
+        child: ElevatedButton(
+          onPressed: () {
+            context.go('/surls');
+          },
+          child: const Text('URL 목록'),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+    );
+  }
+}
+
+@immutable
+class Surl {
+  final int id;
+  final DateTime createDate;
+  final DateTime modifyDate;
+  final String url;
+  final String subject;
+
+  const Surl({
+    required this.id,
+    required this.createDate,
+    required this.modifyDate,
+    required this.url,
+    required this.subject,
+  });
+
+  factory Surl.fromJson(Map<String, dynamic> json) {
+    return Surl(
+      id: json['id'],
+      createDate: DateTime.parse(json['createDate']),
+      modifyDate: DateTime.parse(json['modifyDate']),
+      url: json['url'],
+      subject: json['subject'],
+    );
+  }
+}
+
+final fetchGetSurlsProvider =
+    FutureProvider.autoDispose<List<Surl>>((ref) async {
+  final response = await http.get(
+    Uri.parse('http://localhost:8070/api/v1/surls'),
+  );
+
+  if (response.statusCode == 200) {
+    final List<dynamic> json = jsonDecode(utf8.decode(response.bodyBytes));
+    return json.map((e) => Surl.fromJson(e)).toList();
+  } else {
+    throw Exception('Failed to load Surls');
+  }
+});
+
+final fetchGetSurlProvider =
+    FutureProvider.autoDispose.family<Surl, int>((ref, id) async {
+  final response = await http.get(
+    Uri.parse('http://localhost:8070/api/v1/surls/$id'),
+  );
+
+  if (response.statusCode == 200) {
+    final Map<String, dynamic> json =
+        jsonDecode(utf8.decode(response.bodyBytes));
+    return Surl.fromJson(json);
+  } else {
+    throw Exception('Failed to load Surl');
+  }
+});
+
+class SurlListPage extends HookConsumerWidget {
+  const SurlListPage({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final surlAsyncValue = ref.watch(fetchGetSurlsProvider);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('URL 목록'),
+      ),
+      body: surlAsyncValue.when(
+        data: (surls) => ListView.builder(
+          itemCount: surls.length,
+          itemBuilder: (context, index) {
+            final surl = surls[index];
+            return ListTile(
+              title: Text("ID: ${surl.id}, Subject: ${surl.subject}"),
+              subtitle: Text('URL: ${surl.url}'),
+              onTap: () {
+                context.go('/surls/${surl.id}');
+              },
+              trailing: IconButton(
+                icon: const Icon(Icons.open_in_new),
+                onPressed: () async {
+                  final url = Uri.parse('http://localhost:8070/go/${surl.id}');
+                  if (await canLaunchUrl(url)) {
+                    await launchUrl(url);
+                  } else {
+                    throw 'Could not launch $url';
+                  }
+                },
+              ),
+            );
+          },
+        ),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stack) => Center(child: Text('Error: $error')),
+      ),
+    );
+  }
+}
+
+class SurlDetailPage extends HookConsumerWidget {
+  final int id;
+
+  const SurlDetailPage({super.key, required this.id});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final surlAsyncValue = ref.watch(fetchGetSurlProvider(id));
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('URL 상세'),
+      ),
+      body: surlAsyncValue.when(
+        data: (surl) => Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Id: ${surl.id}',
+                  style: Theme.of(context).textTheme.titleLarge),
+              Text('Subject: ${surl.subject}',
+                  style: Theme.of(context).textTheme.bodyMedium),
+              const SizedBox(height: 10),
+              Text('URL: ${surl.url}',
+                  style: Theme.of(context).textTheme.bodyMedium),
+              const SizedBox(height: 10),
+              Text('Created: ${surl.createDate}',
+                  style: Theme.of(context).textTheme.bodyMedium),
+              const SizedBox(height: 10),
+              Text('Modified: ${surl.modifyDate}',
+                  style: Theme.of(context).textTheme.bodyMedium),
+              const SizedBox(height: 10),
+              SelectableText('Short URL: http://localhost:8070/go/${surl.id}',
+                  style: Theme.of(context).textTheme.bodyMedium),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () async {
+                  final url = Uri.parse('http://localhost:8070/go/${surl.id}');
+                  if (await canLaunchUrl(url)) {
+                    await launchUrl(url);
+                  } else {
+                    throw 'Could not launch $url';
+                  }
+                },
+                child: const Text('Go'),
+              ),
+            ],
+          ),
+        ),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stack) => Center(child: Text('Error: $error')),
+      ),
     );
   }
 }
