@@ -180,15 +180,41 @@ class SurlListPage extends HookConsumerWidget {
                   IconButton(
                     icon: const Icon(Icons.delete),
                     onPressed: () async {
-                      try {
-                        await deleteSurl(surl.id);
-                        // 삭제 후 화면 갱신
-                        ref.invalidate(fetchGetSurlsProvider);
-                      } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Failed to delete: $e')),
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: const Text('삭제 확인'),
+                            content: const Text('정말로 이 항목을 삭제하시겠습니까?'),
+                            actions: <Widget>[
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.of(context).pop(false); // 아니오 선택
+                                },
+                                child: const Text('아니오'),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.of(context).pop(true); // 예 선택
+                                },
+                                child: const Text('예'),
+                              ),
+                            ],
                           );
+                        },
+                      );
+
+                      if (confirm == true) {
+                        try {
+                          await deleteSurl(surl.id);
+                          // 삭제 후 화면 갱신
+                          ref.invalidate(fetchGetSurlsProvider);
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Failed to delete: $e')),
+                            );
+                          }
                         }
                       }
                     },
@@ -258,15 +284,41 @@ class SurlDetailPage extends HookConsumerWidget {
                   ),
                   ElevatedButton(
                     onPressed: () async {
-                      try {
-                        await deleteSurl(surl.id);
-                        ref.invalidate(fetchGetSurlsProvider);
-                        if (context.mounted) context.pop(); // 삭제 후 이전 화면으로 돌아감
-                      } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Failed to delete: $e')),
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: const Text('삭제 확인'),
+                            content: const Text('정말로 이 항목을 삭제하시겠습니까?'),
+                            actions: <Widget>[
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.of(context).pop(false); // 아니오 선택
+                                },
+                                child: const Text('아니오'),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.of(context).pop(true); // 예 선택
+                                },
+                                child: const Text('예'),
+                              ),
+                            ],
                           );
+                        },
+                      );
+
+                      if (confirm == true) {
+                        try {
+                          await deleteSurl(surl.id);
+                          ref.invalidate(fetchGetSurlsProvider);
+                          if (context.mounted) context.pop(); // 삭제 후 이전 화면으로 돌아감
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Failed to delete: $e')),
+                            );
+                          }
                         }
                       }
                     },
