@@ -5,7 +5,7 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:http/http.dart' as http;
-import 'package:url_launcher/url_launcher.dart'; // 추가된 패키지
+import 'package:url_launcher/url_launcher.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -130,6 +130,16 @@ final fetchGetSurlProvider =
   }
 });
 
+Future<void> deleteSurl(int id) async {
+  final response = await http.delete(
+    Uri.parse('http://localhost:8070/api/v1/surls/$id'),
+  );
+
+  if (response.statusCode != 200) {
+    throw Exception('Failed to delete Surl');
+  }
+}
+
 class SurlListPage extends HookConsumerWidget {
   const SurlListPage({super.key});
 
@@ -152,16 +162,38 @@ class SurlListPage extends HookConsumerWidget {
               onTap: () {
                 context.go('/surls/${surl.id}');
               },
-              trailing: IconButton(
-                icon: const Icon(Icons.open_in_new),
-                onPressed: () async {
-                  final url = Uri.parse('http://localhost:8070/go/${surl.id}');
-                  if (await canLaunchUrl(url)) {
-                    await launchUrl(url);
-                  } else {
-                    throw 'Could not launch $url';
-                  }
-                },
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.open_in_new),
+                    onPressed: () async {
+                      final url =
+                          Uri.parse('http://localhost:8070/go/${surl.id}');
+                      if (await canLaunchUrl(url)) {
+                        await launchUrl(url);
+                      } else {
+                        throw 'Could not launch $url';
+                      }
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete),
+                    onPressed: () async {
+                      try {
+                        await deleteSurl(surl.id);
+                        // 삭제 후 화면 갱신
+                        ref.invalidate(fetchGetSurlsProvider);
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Failed to delete: $e')),
+                          );
+                        }
+                      }
+                    },
+                  ),
+                ],
               ),
             );
           },
@@ -209,16 +241,41 @@ class SurlDetailPage extends HookConsumerWidget {
               SelectableText('Short URL: http://localhost:8070/go/${surl.id}',
                   style: Theme.of(context).textTheme.bodyMedium),
               const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () async {
-                  final url = Uri.parse('http://localhost:8070/go/${surl.id}');
-                  if (await canLaunchUrl(url)) {
-                    await launchUrl(url);
-                  } else {
-                    throw 'Could not launch $url';
-                  }
-                },
-                child: const Text('Go'),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  ElevatedButton(
+                    onPressed: () async {
+                      final url =
+                          Uri.parse('http://localhost:8070/go/${surl.id}');
+                      if (await canLaunchUrl(url)) {
+                        await launchUrl(url);
+                      } else {
+                        throw 'Could not launch $url';
+                      }
+                    },
+                    child: const Text('Go'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () async {
+                      try {
+                        await deleteSurl(surl.id);
+                        ref.invalidate(fetchGetSurlsProvider);
+                        if (context.mounted) context.pop(); // 삭제 후 이전 화면으로 돌아감
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Failed to delete: $e')),
+                          );
+                        }
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                    ),
+                    child: const Text('Delete'),
+                  ),
+                ],
               ),
             ],
           ),
