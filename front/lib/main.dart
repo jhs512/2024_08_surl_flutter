@@ -31,7 +31,11 @@ class MyApp extends HookWidget {
                     builder: (context, state) => const SurlListPage(),
                     routes: [
                       GoRoute(
-                        path: ':id',
+                        path: 'add',
+                        builder: (context, state) => const SurlAddPage(),
+                      ),
+                      GoRoute(
+                        path: 'detail/:id',
                         builder: (context, state) => SurlDetailPage(
                           id: int.parse(state.pathParameters['id']!),
                         ),
@@ -70,6 +74,28 @@ class HomePage extends HookWidget {
           child: const Text('URL 목록'),
         ),
       ),
+    );
+  }
+}
+
+@immutable
+class RsData<T> {
+  final String resultCode;
+  final String msg;
+  final T body;
+
+  const RsData({
+    required this.resultCode,
+    required this.msg,
+    required this.body,
+  });
+
+  factory RsData.fromJson(
+      Map<String, dynamic> json, T Function(Map<String, dynamic>) fromJsonT) {
+    return RsData(
+      resultCode: json['resultCode'],
+      msg: json['msg'],
+      body: fromJsonT(json['body']),
     );
   }
 }
@@ -160,7 +186,7 @@ class SurlListPage extends HookConsumerWidget {
               title: Text("ID: ${surl.id}, Subject: ${surl.subject}"),
               subtitle: Text('URL: ${surl.url}'),
               onTap: () {
-                context.go('/surls/${surl.id}');
+                context.go('/surls/detail/${surl.id}');
               },
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -226,6 +252,12 @@ class SurlListPage extends HookConsumerWidget {
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stack) => Center(child: Text('Error: $error')),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          context.go('/surls/add');
+        },
+        child: const Icon(Icons.add),
       ),
     );
   }
@@ -312,7 +344,9 @@ class SurlDetailPage extends HookConsumerWidget {
                         try {
                           await deleteSurl(surl.id);
                           ref.invalidate(fetchGetSurlsProvider);
-                          if (context.mounted) context.pop(); // 삭제 후 이전 화면으로 돌아감
+                          if (context.mounted) {
+                            context.pop(); // 삭제 후 이전 화면으로 돌아감
+                          }
                         } catch (e) {
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -334,6 +368,81 @@ class SurlDetailPage extends HookConsumerWidget {
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stack) => Center(child: Text('Error: $error')),
+      ),
+    );
+  }
+}
+
+class SurlAddPage extends HookConsumerWidget {
+  const SurlAddPage({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final urlController = useTextEditingController();
+    final subjectController = useTextEditingController();
+
+    Future<void> submitForm() async {
+      final url = urlController.text;
+      final subject = subjectController.text;
+
+      if (url.isEmpty || subject.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('모든 필드를 입력하세요.')),
+        );
+        return;
+      }
+
+      final response = await http.post(
+        Uri.parse('http://localhost:8070/api/v1/surls'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'url': url, 'subject': subject}),
+      );
+
+      if (response.statusCode == 200) {
+        final RsData<Surl> rsData = RsData.fromJson(
+          jsonDecode(utf8.decode(response.bodyBytes)),
+          (json) => Surl.fromJson(json),
+        );
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(rsData.msg)),
+          );
+
+          context.go('/surls/detail/${rsData.body.id}');
+        }
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to add Surl')),
+          );
+        }
+      }
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('URL 추가'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            TextField(
+              controller: urlController,
+              decoration: const InputDecoration(labelText: 'URL'),
+            ),
+            TextField(
+              controller: subjectController,
+              decoration: const InputDecoration(labelText: 'Subject'),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: submitForm,
+              child: const Text('추가'),
+            ),
+          ],
+        ),
       ),
     );
   }
